@@ -50,8 +50,10 @@ def denoise_image(image_file):
 
 def process_image(image_file):
     image = denoise_image(image_file)
-    image = cv2.cvtColor(image.astype("float32"), cv2.COLOR_BGR2GRAY)
-    return image
+    image = image.astype("uint8")
+    gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    eq_image = cv2.equalizeHist(gray_image)
+    return eq_image
 
 def extract_features(image):
     pass
