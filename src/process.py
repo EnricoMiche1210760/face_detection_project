@@ -50,7 +50,7 @@ def denoise_image(image_file):
 
 def process_image(image_file):
     image = denoise_image(image_file)
-    image = image.astype("uint8")
+    image = np.uint8(cv2.normalize(image, None, 0, 255, cv2.NORM_MINMAX))
     gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     eq_image = cv2.equalizeHist(gray_image)
     return eq_image
