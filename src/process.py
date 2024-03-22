@@ -8,31 +8,33 @@ import numpy as np
 zip_file = "img_align_celeba.zip"
 DATA_PATH = "../data"
 
-def extract_dataset():
-    if not os.path.exists(DATA_PATH+"/img_align_celeba"):
+def extract_dataset(path: str = None):
+    if not path:
+        path = DATA_PATH
+    if not os.path.exists(path):
         print("Extracting CelebA dataset...")
         with zipfile.ZipFile(DATA_PATH+'/'+zip_file, 'r') as zip_ref:
             zip_ref.extractall(DATA_PATH)
     else:
         print("CelebA dataset already extracted")
 
-def load_images(number_of_images=100, random_seed=42):
-    if not os.path.exists(DATA_PATH+"/img_align_celeba"):
+def load_images(path:str, number_of_images=100, random_seed=42):
+    if not os.path.exists(path):
         extract_dataset()
-    list_of_images = os.listdir(DATA_PATH+"/img_align_celeba")
+    list_of_images = os.listdir(path)
     np.random.seed(random_seed)
     images = np.random.choice(list_of_images, number_of_images)
     return images
 
-def load_image(filename=None):
+def load_image(path:str, filename=None):
     if filename is None:
-        if not os.path.exists(DATA_PATH+"/img_align_celeba"):
+        if not os.path.exists(path):
             extract_dataset()
-        list_of_images = os.listdir(DATA_PATH+"/img_align_celeba")
+        list_of_images = os.listdir(path)
         filename = DATA_PATH+"/img_align_celeba/"+list_of_images[0]
         print("Loaded image: ", filename)
     else:
-        if filename not in os.listdir(DATA_PATH+"/img_align_celeba"):
+        if filename not in os.listdir(path):
             print("File not found")
             return None
     return filename
@@ -48,48 +50,34 @@ def denoise_image(image_file):
     denoised_image = denoise_nl_means(image, h=1.15 * sigma_est, sigma = sigma_est, fast_mode=True, **patch_kw)
     return denoised_image
 
-def process_image(image_file):
-    image = denoise_image(image_file)
+def equalize_image(image):
     image = np.uint8(cv2.normalize(image, None, 0, 255, cv2.NORM_MINMAX))
     gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    eq_image = cv2.equalizeHist(gray_image)
+    return cv2.equalizeHist(gray_image)
+
+def process_image(image_file):
+    image = denoise_image(image_file)
+    eq_image = equalize_image(image)
     return eq_image
 
-def extract_features(image):
-    pass
+def extract_features_image(image : np.ndarray, debug=False):
+    sift = cv2.SIFT_create()
+    kp = sift.detect(image, None)
+    if debug:
+        img = cv2.drawKeypoints(image, kp, None)
+        cv2.imshow("Image", img)
+        while True:
+            if cv2.getWindowProperty("Image", cv2.WND_PROP_VISIBLE) < 1:
+                break
+            key = cv2.waitKey(1) & 0xFF
+            if key != 255:
+                break
+        cv2.destroyAllWindows()
+
+    kp, des = sift.compute(image, kp)
+    return des
+
     
-
-
-# Main function (for debugging)
-if __name__ == "__main__":
-    extract_dataset()
-    img_file = load_image()
-    
-    cv2.namedWindow("Image", cv2.WINDOW_NORMAL)
-    cv2.setMouseCallback("Image", handle_mouse)
-    image = denoise_image(img_file)
-    image = cv2.cvtColor(image.astype("float32"), cv2.COLOR_BGR2GRAY)
-    cv2.imshow("Image", image)
-
-    while True:
-        if cv2.getWindowProperty("Image", cv2.WND_PROP_VISIBLE) < 1:
-            break
-
-        key = cv2.waitKey(1) & 0xFF
-        if key != 255:
-            break
-    cv2.destroyAllWindows()
-    print("Done 1")
-
-    img_list = load_images(number_of_images=100, random_seed=7)
-    images = []
-    for img in img_list:
-        images.append(process_image(DATA_PATH+"/img_align_celeba/"+img))
-    print("Done 2")
-
-    print(images[0].shape)
-    print(images[1].shape)
-    print(images[2].shape)
 
 
 
