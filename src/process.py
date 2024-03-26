@@ -8,6 +8,7 @@ import user_warnings as uw
 
 zip_file = "img_align_celeba.zip"
 DATA_PATH = "../data"
+SIFT_FEATURES = 100
 
 def extract_dataset(path: str = None, folder:str = "single_folder"):
     if not path:
@@ -88,7 +89,7 @@ def extract_features_image(image : np.ndarray, debug=False):
         cv2.destroyAllWindows()
 
 
-    kp = sorted(kp, key = lambda x:x.response, reverse=True)[:100]
+    kp = sorted(kp, key = lambda x:x.response, reverse=True)[:SIFT_FEATURES]
     kp, des = sift.compute(image, kp)
     return des
 

@@ -79,14 +79,25 @@ if __name__ == "__main__":
 
     if sys.argv[1] == "extract_features":
         
-        img_list = pc.load_images(number_of_images=10, random_seed=7)
+        img_list = pc.load_images(pc.DATA_PATH+"/img_align_celeba/", number_of_images=10, random_seed=7)
         images = []
         for img in img_list:
             images.append(cv2.imread(pc.DATA_PATH+"/img_align_celeba/"+img, cv2.IMREAD_GRAYSCALE))
         
         print(images[0].shape)
+        des_append = []
+        des_extend = []
         for img in images:
-            pc.extract_features_image(img, debug=True)
+            des = pc.extract_features_image(img, debug=True)
+            des_append.append(des)
+            des_extend.extend(des)
+        
+        
+        print(len(des_append))
+        print(len(des_extend))
+        print(des_append[0:2])
+        print(des_extend[0:2])
+
         print("Done 3")
 
     
