@@ -88,7 +88,7 @@ def extract_features_image(image : np.ndarray, debug=False):
         cv2.destroyAllWindows()
 
 
-    kp = sorted(kp, key = lambda x:x.response, reverse=True)[:128]
+    kp = sorted(kp, key = lambda x:x.response, reverse=True)[:100]
     kp, des = sift.compute(image, kp)
     return des
 
