@@ -8,7 +8,7 @@ import user_warnings as uw
 
 zip_file = "img_align_celeba.zip"
 DATA_PATH = "../data"
-SIFT_FEATURES = 100
+SIFT_FEATURES = 128
 
 def extract_dataset(path: str = None, folder:str = "single_folder"):
     if not path:
