@@ -2,9 +2,10 @@ import os
 import zipfile
 import cv2
 from skimage.restoration import denoise_nl_means, estimate_sigma
-from skimage import img_as_float
+from skimage import img_as_float, filters, feature, color
 import numpy as np
 import user_warnings as uw
+import matplotlib.pyplot as plt
 
 zip_file = "img_align_celeba.zip"
 DATA_PATH = "../data"
@@ -69,10 +70,28 @@ def equalize_image(image):
     gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     return cv2.equalizeHist(gray_image)
 
+def difference_of_gaussian(image, show_image=False):
+    k = 1.6 # Gaussian blur factor
+    for idx, sigma in enumerate([4, 8, 16, 32]):
+        s1 = filters.gaussian(image, sigma)
+        s2 = filters.gaussian(image, sigma*k)
+        dog = s1 - s2
+        dog = np.uint8(cv2.normalize(dog, None, 0, 255, cv2.NORM_MINMAX))
+
+
+        if show_image:
+            cv2.imshow("DOG", dog)
+            cv2.waitKey(0)
+            cv2.destroyAllWindows()
+        return dog
+
+
+
 def process_image(image_file):
     image = denoise_image(image_file)
     eq_image = equalize_image(image)
-    return eq_image
+    dog = difference_of_gaussian(eq_image)
+    return dog
 
 def extract_features_image(image : np.ndarray, debug=False):
     sift = cv2.SIFT_create()
