@@ -89,6 +89,7 @@ def difference_of_gaussian(image, show_image=False):
 
 def process_image(image_file):
     image = denoise_image(image_file)
+    image = cv2.resize(image, (128, 128))
     eq_image = equalize_image(image)
     dog = difference_of_gaussian(eq_image)
     return dog
