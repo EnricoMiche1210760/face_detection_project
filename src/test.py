@@ -111,6 +111,12 @@ if __name__ == "__main__":
 
         image = mpimg.imread(image_path)
 
-        image = cv2.resize(image, (512, 512))
+        image = cv2.resize(image, (1024, 1024))
+        faces = pc.detect_faces(image_path, pipeline, threshold=0.75, window_size=(256, 256), step_size=(32,32))    
 
-        boxes, scores = pc.detect_faces(image_path, pipeline, threshold=0.75, window_size=(256, 256), step_size=(16,16))    
+        for (x, y, w, h) in faces:
+            cv2.rectangle(image, (x, y), (x+w, y+h), (0, 255, 0), 2)
+        
+        cv2.imshow("Image", image)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()

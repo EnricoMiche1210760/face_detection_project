@@ -112,7 +112,7 @@ def extract_features_image(image : np.ndarray, debug=False):
 
     kp = sorted(kp, key = lambda x:x.response, reverse=True)[:SIFT_FEATURES]
     kp, des = sift.compute(image, kp)
-    return des
+    return (kp, des)
 
 def sliding_window(image : np.array, window_size : tuple = (32,32), step_size : tuple = (8, 8)):
     """
@@ -147,38 +147,21 @@ def detect_faces(img_path, pipeline : object, threshold=0.5, window_size=(64, 64
     max_features = 0
     for win in window:
         x, y, roi = win
-        features = pipeline.named_steps['extract_features'](roi)
-        if features is not None and features.shape[0] > max_features:
-            valid_windows = win
-            max_features = features.shape[0]
-    
-    x, y, roi = valid_windows
+        keypoints, features = pipeline.named_steps['extract_features'](roi)
+        if features is not None:
+            features_flattened = features.reshape(features.shape[0], -1)
+            pca_img = pipeline.named_steps['pca']
+            pca_descriptors = pca_img.transform(features_flattened)
+            svm = pipeline.named_steps['svc']
+            predictions = svm.predict(pca_descriptors)
+            print(predictions)
+            faces = []
+            for kp, pred in zip(keypoints, predictions):
+                if pred == 1:
+                    size = kp.size
+                    faces.append((int(x-size/2), int(y-size/2), int(size), int(size)))
 
-    features_flattened = pipeline.named_steps['extract_features'](roi)
-    features_flattened = features_flattened.reshape(features_flattened.shape[0], -1)
-    print(features_flattened)
-
-    pca_img = pipeline.named_steps['pca']
-    roi_pca = pca_img.transform(features_flattened)
-
-    svm = pipeline.named_steps['svc']
-
-    scores = svm.decision_function(roi_pca)
-    print(scores)
-    y_pred = np.where(scores > threshold, 1, 0) 
-
-    print(y_pred)
-
-    #for idx in np.where(y_pred == 1)[0]:
-    cv2.rectangle(preproc_img, (x, y), (x + window_size[0], y + window_size[1]), (0, 255, 0), 2)
-
-    cv2.imshow('Detected Faces', preproc_img)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
-
-
-        
-        
+    return faces
 
 
 
