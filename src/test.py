@@ -101,4 +101,16 @@ if __name__ == "__main__":
 
         print("Done 3")
 
-    
+    if sys.argv[1] == "test_pipeline":
+        import joblib
+        from matplotlib import image as mpimg
+        pipeline_save_path = pc.DATA_PATH+"/svm_model_definitive.pkl"
+        image_path = pc.DATA_PATH+"/final/Valentino_Rossi_2017.jpg"
+
+        pipeline = joblib.load(pipeline_save_path)
+
+        image = mpimg.imread(image_path)
+
+        image = cv2.resize(image, (512, 512))
+
+        boxes, scores = pc.detect_faces(image_path, pipeline, threshold=0.75, window_size=(256, 256), step_size=(16,16))    

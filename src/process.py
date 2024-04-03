@@ -46,7 +46,7 @@ def load_image(path:str, filename=None):
         if not os.path.exists(path):
             extract_dataset()
         list_of_images = os.listdir(path)
-        filename = path+list_of_images[0]
+        filename = path+'/'+list_of_images[0]
         print("Loaded image: ", filename)
     else:
         if filename not in os.listdir(path):
@@ -87,9 +87,10 @@ def difference_of_gaussian(image, show_image=False):
 
 
 
-def process_image(image_file):
+def process_image(image_file, train_str):
     image = denoise_image(image_file)
-    image = cv2.resize(image, (128, 128))
+    if train_str != "test":
+        image = cv2.resize(image, (64, 64))
     eq_image = equalize_image(image)
     dog = difference_of_gaussian(eq_image)
     return dog
@@ -112,6 +113,73 @@ def extract_features_image(image : np.ndarray, debug=False):
     kp = sorted(kp, key = lambda x:x.response, reverse=True)[:SIFT_FEATURES]
     kp, des = sift.compute(image, kp)
     return des
+
+def sliding_window(image : np.array, window_size : tuple = (32,32), step_size : tuple = (8, 8)):
+    """
+    Generate sliding windows over an image.
+
+    Parameters:
+        image: numpy.ndarray
+            Input image.
+        window_size: tuple
+            Size of the sliding window (width, height).
+        step_size: tuple
+            Step size for moving the window (horizontal_step, vertical_step).
+
+    Yields:
+        Tuple containing the sliding window and its coordinates (x, y, window_width, window_height).
+    """
+
+    image_height, image_width = image.shape[:2]
+
+    for y in range(0, image_height - window_size[1] + 1, step_size[1]):
+        for x in range(0, image_width - window_size[0] + 1, step_size[0]):
+            roi = image[y:y + window_size[1], x:x + window_size[0]] #region of interest
+            yield (x, y, roi)
+
+
+
+def detect_faces(img_path, pipeline : object, threshold=0.5, window_size=(64, 64), step_size=(8, 8)):
+    preproc_img = pipeline.named_steps['preprocess'](img_path, 'test')
+    window = sliding_window(preproc_img, window_size, step_size)
+
+    features_flattened = []
+    max_features = 0
+    for win in window:
+        x, y, roi = win
+        features = pipeline.named_steps['extract_features'](roi)
+        if features is not None and features.shape[0] > max_features:
+            valid_windows = win
+            max_features = features.shape[0]
+    
+    x, y, roi = valid_windows
+
+    features_flattened = pipeline.named_steps['extract_features'](roi)
+    features_flattened = features_flattened.reshape(features_flattened.shape[0], -1)
+    print(features_flattened)
+
+    pca_img = pipeline.named_steps['pca']
+    roi_pca = pca_img.transform(features_flattened)
+
+    svm = pipeline.named_steps['svc']
+
+    scores = svm.decision_function(roi_pca)
+    print(scores)
+    y_pred = np.where(scores > threshold, 1, 0) 
+
+    print(y_pred)
+
+    #for idx in np.where(y_pred == 1)[0]:
+    cv2.rectangle(preproc_img, (x, y), (x + window_size[0], y + window_size[1]), (0, 255, 0), 2)
+
+    cv2.imshow('Detected Faces', preproc_img)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+
+
+        
+        
+
 
 
 
