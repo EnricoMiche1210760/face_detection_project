@@ -106,7 +106,7 @@ def show_image_with_keypoints(image, keypoints):
             break
     cv2.destroyAllWindows()
 
-def extract_SIFT_features_image(image : np.ndarray, debug:bool=False):
+def extract_SIFT_features(image : np.ndarray, debug:bool=False):
     sift = cv2.SIFT_create()
     kp = sift.detect(image, None)
     if debug:
@@ -120,6 +120,8 @@ def extract_ORB_features(image : np.ndarray, debug:bool=False):
     kp, des = orb.detectAndCompute(image, None)
     if debug:
         show_image_with_keypoints(image, kp)
+    #kp = sorted(kp, key = lambda x:x.response, reverse=True)[:SIFT_FEATURES]
+    #kp, des = orb.compute(image, kp)
     return (kp, des)
 
 def sliding_window(image : np.array, window_size : tuple = (32,32), step_size : tuple = (8, 8)):

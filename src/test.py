@@ -88,8 +88,8 @@ if __name__ == "__main__":
         des_append = []
         des_extend = []
         for img_file in img_list:
-            img = pc.process_image(pc.DATA_PATH+"/img_align_celeba/"+img_file, resize=True, img_resize=(64, 64))
-            des = pc.extract_SIFT_features_image(img, debug=True)
+            img = pc.process_image(pc.DATA_PATH+"/img_align_celeba/"+img_file, resize=True, img_resize=(96, 96))
+            _, des = pc.extract_ORB_features(img, debug=True)
             des_append.append(des)
             des_extend.extend(des)
         
