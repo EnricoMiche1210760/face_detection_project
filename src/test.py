@@ -71,7 +71,7 @@ if __name__ == "__main__":
         img_list = pc.load_images(number_of_images=100, random_seed=7)
         images = []
         for img in img_list:
-            images.append(pc.process_image(pc.DATA_PATH+"/img_align_celeba/"+img))      
+            images.append(pc.process_image(pc.DATA_PATH+"/img_align_celeba/"+img, resize=True, img_resize=(64, 64)))      
         print(images[0].shape)
         print(images[1].shape)
         print(images[2].shape)
@@ -88,8 +88,8 @@ if __name__ == "__main__":
         des_append = []
         des_extend = []
         for img_file in img_list:
-            img = pc.process_image(pc.DATA_PATH+"/img_align_celeba/"+img_file)
-            des = pc.extract_features_image(img, debug=True)
+            img = pc.process_image(pc.DATA_PATH+"/img_align_celeba/"+img_file, resize=True, img_resize=(64, 64))
+            des = pc.extract_SIFT_features_image(img, debug=True)
             des_append.append(des)
             des_extend.extend(des)
         

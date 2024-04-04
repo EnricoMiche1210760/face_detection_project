@@ -70,7 +70,7 @@ def equalize_image(image):
     gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     return cv2.equalizeHist(gray_image)
 
-def difference_of_gaussian(image, show_image=False):
+def difference_of_gaussian(image, show_image:bool=False):
     k = 1.6 # Gaussian blur factor
     for idx, sigma in enumerate([4, 8, 16, 32]):
         s1 = filters.gaussian(image, sigma)
@@ -85,33 +85,41 @@ def difference_of_gaussian(image, show_image=False):
             cv2.destroyAllWindows()
         return dog
 
-
-
-def process_image(image_file, train_str):
+def process_image(image_file, resize:bool=False, img_resize:tuple=(64, 64), diff_of_gaussian:bool=False):
     image = denoise_image(image_file)
-    if train_str != "test":
-        image = cv2.resize(image, (64, 64))
+    if resize:
+        image = cv2.resize(image, img_resize)
     eq_image = equalize_image(image)
-    dog = difference_of_gaussian(eq_image)
-    return dog
+    if diff_of_gaussian:
+        dog = difference_of_gaussian(eq_image)
+        return dog
+    return eq_image
 
-def extract_features_image(image : np.ndarray, debug=False):
+def show_image_with_keypoints(image, keypoints):
+    img = cv2.drawKeypoints(image, keypoints, None)
+    cv2.imshow("Image", img)
+    while True:
+        if cv2.getWindowProperty("Image", cv2.WND_PROP_VISIBLE) < 1:
+            break
+        key = cv2.waitKey(1) & 0xFF
+        if key != 255:
+            break
+    cv2.destroyAllWindows()
+
+def extract_SIFT_features_image(image : np.ndarray, debug:bool=False):
     sift = cv2.SIFT_create()
     kp = sift.detect(image, None)
     if debug:
-        img = cv2.drawKeypoints(image, kp, None)
-        cv2.imshow("Image", img)
-        while True:
-            if cv2.getWindowProperty("Image", cv2.WND_PROP_VISIBLE) < 1:
-                break
-            key = cv2.waitKey(1) & 0xFF
-            if key != 255:
-                break
-        cv2.destroyAllWindows()
-
-
+        show_image_with_keypoints(image, kp)
     kp = sorted(kp, key = lambda x:x.response, reverse=True)[:SIFT_FEATURES]
     kp, des = sift.compute(image, kp)
+    return (kp, des)
+
+def extract_ORB_features(image : np.ndarray, debug:bool=False):
+    orb = cv2.ORB_create()
+    kp, des = orb.detectAndCompute(image, None)
+    if debug:
+        show_image_with_keypoints(image, kp)
     return (kp, des)
 
 def sliding_window(image : np.array, window_size : tuple = (32,32), step_size : tuple = (8, 8)):
@@ -144,7 +152,6 @@ def detect_faces(img_path, pipeline : object, threshold=0.5, window_size=(64, 64
     window = sliding_window(preproc_img, window_size, step_size)
 
     features_flattened = []
-    max_features = 0
     for win in window:
         x, y, roi = win
         keypoints, features = pipeline.named_steps['extract_features'](roi)
