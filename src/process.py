@@ -153,35 +153,27 @@ def sliding_window(image : np.array, window_size : tuple = (32,32), step_size : 
 
 
 
-def detect_faces(img_path, pipeline : object, threshold=0.5, window_size=(64, 64), step_size=(8, 8)):
-    preproc_img = pipeline.named_steps['preprocess'](img_path, resize=True, img_resize=(96, 96))
-    #window = sliding_window(preproc_img, window_size, step_size)
-
-    features_flattened = []
+def detect_faces(img_path, pipeline : object, threshold=0.5, window_size=(96, 96), step_size=(16, 16), n_keypoints=500):
+    preproc_img = pipeline.named_steps['preprocess'](img_path, resize=False)
+    
+    windows = sliding_window(preproc_img, window_size=window_size, step_size=step_size) 
     faces = []
-    #for win in window:
-    #x, y, roi = win
-    keypoints, features = pipeline.named_steps['extract_features'](preproc_img)
-    print(features)
-    if features is not None:
-        features_flattened = features.reshape(features.shape[0], -1)
-        #pca_img = pipeline.named_steps['pca']
-        #descriptors = pca_img.transform(features_flattened)
-        svm = pipeline.named_steps['svc']
-        predictions = svm.predict(features_flattened)
-        print(predictions)
-        
-        ones = np.count_nonzero(predictions == 1)
-        zeros = np.count_nonzero(predictions == 0)
-        print("Ones: ", ones)
-        print("Zeros: ", zeros)
-        print("Total: ", len(predictions))
-
-        for kp, pred in zip(keypoints, predictions):
-            if pred == 1:
-                x, y = kp.pt
-                w, h = kp.size, kp.size
-                faces.append((int(x-w/2), int(y-h/2), int(w), int(h)))
+    for x, y, win in windows:
+        keypoints, features = pipeline.named_steps['extract_features'](win, n_keypoints=n_keypoints)
+        if features is not None:
+            features = tuple(map(float, features.flatten()))
+            features_array = np.array(features).reshape(1, -1)
+            if features_array.shape[1] != 8192:
+                continue
+            svm = pipeline.named_steps['svc']
+            predict = svm.predict(features_array)
+            print(predict)
+            if predict > threshold:
+                print(svm.decision_function(features_array))
+                print("Face detected")
+                faces.append((x, y, window_size[0], window_size[1]))
+            else:
+                print(f"\n\n\n {svm.decision_function(features_array)} \n\n\n")
     return faces
 
 
