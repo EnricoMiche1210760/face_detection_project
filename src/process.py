@@ -158,22 +158,37 @@ def detect_faces(img_path, pipeline : object, threshold=0.5, window_size=(96, 96
     
     windows = sliding_window(preproc_img, window_size=window_size, step_size=step_size) 
     faces = []
-    for x, y, win in windows:
-        keypoints, features = pipeline.named_steps['extract_features'](win, n_keypoints=n_keypoints)
+    features_array = []
+    keypoints = []
+    for _, _, win in windows:
+        kp, features = pipeline.named_steps['extract_features'](win, n_keypoints=n_keypoints)
         if features is not None:
             features = tuple(map(float, features.flatten()))
-            features_array = np.array(features).reshape(1, -1)
-            if features_array.shape[1] != 8192:
+            features = np.array(features).reshape(1, -1)
+            if features.shape[1] != 8192:
                 continue
-            svm = pipeline.named_steps['svc']
-            predict = svm.predict(features_array)
-            print(predict)
-            if predict > threshold:
-                print(svm.decision_function(features_array))
-                print("Face detected")
-                faces.append((x, y, window_size[0], window_size[1]))
-            else:
-                print(f"\n\n\n {svm.decision_function(features_array)} \n\n\n")
+            features_array.append(features)
+            keypoints.append(kp)
+
+    np_features_array = np.array(features_array).reshape(-1, 8192)
+    svm = pipeline.named_steps['svc']
+    scores = svm.decision_function(np_features_array)
+    y_pred = np.where(scores > threshold, 1, 0)
+
+    print(keypoints[0])
+    print(y_pred)
+
+
+    DOMANI GUARDO QUA:
+    https://scikit-image.org/docs/stable/api/skimage.feature.html#skimage.feature.ORB
+
+    for idx in np.where(y_pred == 1)[0]:
+        x1 = keypoints[idx][1]
+        y1 = keypoints[idx][0]
+        x, y = int(x1), int(y1)
+        w, h = int(x1+window_size[0]), int(y1+window_size[1])
+        faces.append((x, y, w, h))
+        print("Face detected")
     return faces
 
 
