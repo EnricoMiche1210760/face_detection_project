@@ -2,7 +2,8 @@ import os
 import zipfile
 import cv2
 from skimage.restoration import denoise_nl_means, estimate_sigma
-from skimage import img_as_float, filters, feature, color
+from skimage import img_as_float, filters
+from skimage.feature import ORB
 import numpy as np
 import user_warnings as uw
 import matplotlib.pyplot as plt
@@ -115,13 +116,16 @@ def extract_SIFT_features(image : np.ndarray, debug:bool=False):
     kp, des = sift.compute(image, kp)
     return (kp, des)
 
-def extract_ORB_features(image : np.ndarray, debug:bool=False):
-    orb = cv2.ORB_create()
-    kp, des = orb.detectAndCompute(image, None)
+def extract_ORB_features(image : np.ndarray, debug:bool=False, n_keypoints:int=500):
+    orb = ORB(n_keypoints=n_keypoints)
+    try:
+        orb.detect_and_extract(image)
+    except:
+        return (None, None)
+    kp = orb.keypoints
+    des = orb.descriptors
     if debug:
         show_image_with_keypoints(image, kp)
-    #kp = sorted(kp, key = lambda x:x.response, reverse=True)[:SIFT_FEATURES]
-    #kp, des = orb.compute(image, kp)
     return (kp, des)
 
 def sliding_window(image : np.array, window_size : tuple = (32,32), step_size : tuple = (8, 8)):
@@ -150,26 +154,34 @@ def sliding_window(image : np.array, window_size : tuple = (32,32), step_size : 
 
 
 def detect_faces(img_path, pipeline : object, threshold=0.5, window_size=(64, 64), step_size=(8, 8)):
-    preproc_img = pipeline.named_steps['preprocess'](img_path, 'test')
-    window = sliding_window(preproc_img, window_size, step_size)
+    preproc_img = pipeline.named_steps['preprocess'](img_path, resize=True, img_resize=(96, 96))
+    #window = sliding_window(preproc_img, window_size, step_size)
 
     features_flattened = []
-    for win in window:
-        x, y, roi = win
-        keypoints, features = pipeline.named_steps['extract_features'](roi)
-        if features is not None:
-            features_flattened = features.reshape(features.shape[0], -1)
-            pca_img = pipeline.named_steps['pca']
-            pca_descriptors = pca_img.transform(features_flattened)
-            svm = pipeline.named_steps['svc']
-            predictions = svm.predict(pca_descriptors)
-            print(predictions)
-            faces = []
-            for kp, pred in zip(keypoints, predictions):
-                if pred == 1:
-                    size = kp.size
-                    faces.append((int(x-size/2), int(y-size/2), int(size), int(size)))
+    faces = []
+    #for win in window:
+    #x, y, roi = win
+    keypoints, features = pipeline.named_steps['extract_features'](preproc_img)
+    print(features)
+    if features is not None:
+        features_flattened = features.reshape(features.shape[0], -1)
+        #pca_img = pipeline.named_steps['pca']
+        #descriptors = pca_img.transform(features_flattened)
+        svm = pipeline.named_steps['svc']
+        predictions = svm.predict(features_flattened)
+        print(predictions)
+        
+        ones = np.count_nonzero(predictions == 1)
+        zeros = np.count_nonzero(predictions == 0)
+        print("Ones: ", ones)
+        print("Zeros: ", zeros)
+        print("Total: ", len(predictions))
 
+        for kp, pred in zip(keypoints, predictions):
+            if pred == 1:
+                x, y = kp.pt
+                w, h = kp.size, kp.size
+                faces.append((int(x-w/2), int(y-h/2), int(w), int(h)))
     return faces
 
 

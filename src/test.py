@@ -78,7 +78,7 @@ if __name__ == "__main__":
         print("Done 2")
 
     if sys.argv[1] == "extract_features":
-        
+        import numpy as np
         img_list = pc.load_images(pc.DATA_PATH+"/img_align_celeba/", number_of_images=5, random_seed=7)
         images = []
         for img in img_list:
@@ -104,14 +104,14 @@ if __name__ == "__main__":
     if sys.argv[1] == "test_pipeline":
         import joblib
         from matplotlib import image as mpimg
-        pipeline_save_path = pc.DATA_PATH+"/svm_model_definitive.pkl"
+        pipeline_save_path = pc.DATA_PATH+"/svm_model_3.pkl"
         image_path = pc.DATA_PATH+"/final/Valentino_Rossi_2017.jpg"
 
         pipeline = joblib.load(pipeline_save_path)
 
         image = mpimg.imread(image_path)
 
-        image = cv2.resize(image, (1024, 1024))
+        image = cv2.resize(image, (96, 96))
         faces = pc.detect_faces(image_path, pipeline, threshold=0.75, window_size=(256, 256), step_size=(32,32))    
 
         for (x, y, w, h) in faces:
