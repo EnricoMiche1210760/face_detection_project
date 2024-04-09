@@ -61,9 +61,9 @@ def handle_mouse(event, x, y, flags, param):
 
 def denoise_image(image_file):
     image = img_as_float(cv2.imread(image_file))
-    sigma_est = estimate_sigma(image, average_sigmas=True, channel_axis=-1)
-    patch_kw = dict(patch_size=5, patch_distance=6, channel_axis=-1)
-    denoised_image = denoise_nl_means(image, h=1.15 * sigma_est, sigma = sigma_est, fast_mode=True, **patch_kw)
+    #sigma_est = estimate_sigma(image, average_sigmas=True, channel_axis=-1)
+    #patch_kw = dict(patch_size=5, patch_distance=6, channel_axis=-1)
+    denoised_image = cv2.GaussianBlur(image, (5, 5), 0)#denoise_nl_means(image, h=1.15 * sigma_est, sigma = sigma_est, fast_mode=True, **patch_kw)
     return denoised_image
 
 def equalize_image(image):
@@ -94,7 +94,9 @@ def process_image(image_file, resize:bool=False, img_resize:tuple=(64, 64), diff
     if diff_of_gaussian:
         dog = difference_of_gaussian(eq_image)
         return dog
-    return eq_image
+    else:
+        _, thresh = cv2.threshold(eq_image, 127, 255, cv2.THRESH_BINARY)#+cv2.THRESH_OTSU)
+    return thresh
 
 def show_image_with_keypoints(image, keypoints):
     img = cv2.drawKeypoints(image, keypoints, None)
@@ -156,40 +158,30 @@ def sliding_window(image : np.array, window_size : tuple = (32,32), step_size : 
 def detect_faces(img_path, pipeline : object, threshold=0.5, window_size=(96, 96), step_size=(16, 16), n_keypoints=500):
     preproc_img = pipeline.named_steps['preprocess'](img_path, resize=False)
     
-    windows = sliding_window(preproc_img, window_size=window_size, step_size=step_size) 
-    faces = []
-    features_array = []
-    keypoints = []
-    for _, _, win in windows:
-        kp, features = pipeline.named_steps['extract_features'](win, n_keypoints=n_keypoints)
-        if features is not None:
-            features = tuple(map(float, features.flatten()))
-            features = np.array(features).reshape(1, -1)
-            if features.shape[1] != 8192:
-                continue
-            features_array.append(features)
-            keypoints.append(kp)
-
-    np_features_array = np.array(features_array).reshape(-1, 8192)
-    svm = pipeline.named_steps['svc']
-    scores = svm.decision_function(np_features_array)
-    y_pred = np.where(scores > threshold, 1, 0)
-
-    print(keypoints[0])
-    print(y_pred)
+    cv2.imshow("Image", preproc_img)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
 
 
-    DOMANI GUARDO QUA:
-    https://scikit-image.org/docs/stable/api/skimage.feature.html#skimage.feature.ORB
+    face_keypoints = []
 
-    for idx in np.where(y_pred == 1)[0]:
-        x1 = keypoints[idx][1]
-        y1 = keypoints[idx][0]
-        x, y = int(x1), int(y1)
-        w, h = int(x1+window_size[0]), int(y1+window_size[1])
-        faces.append((x, y, w, h))
-        print("Face detected")
-    return faces
+    for x, y, win in sliding_window(preproc_img, window_size=window_size, step_size=step_size):
+        keypoints, features = pipeline.named_steps['extract_features'](win, n_keypoints=n_keypoints)
+    
+        if features is None or features.shape[0] != n_keypoints:
+            continue
+        features = tuple(map(float, features.flatten()))
+        features = np.array(features).reshape(1, -1)
+                
+        svm = pipeline.named_steps['svc']
+        scores = svm.decision_function(features)
+        y_pred = np.where(scores > threshold, 1, 0)
+
+        window_keypoints = np.array([[kp[0]+x, kp[1]+y] for kp, pred in zip(keypoints, y_pred) if pred == 1])
+
+        face_keypoints.extend(window_keypoints)
+
+    return face_keypoints
 
 
 

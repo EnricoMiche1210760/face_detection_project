@@ -104,8 +104,11 @@ if __name__ == "__main__":
     if sys.argv[1] == "test_pipeline":
         import joblib
         from matplotlib import image as mpimg
-        pipeline_save_path = pc.DATA_PATH+"/svm_model_3.pkl"
-        image_path = pc.DATA_PATH+"/final/Valentino_Rossi_2017.jpg"
+        #pipeline_save_path = pc.DATA_PATH+"/svm_model_3.pkl"
+        pipeline_save_path = pc.DATA_PATH+"/svm_model_dog.pkl"
+        
+        
+        image_path = pc.DATA_PATH+"/final/totti_del_piero.jpg"
 
         pipeline = joblib.load(pipeline_save_path)
 
@@ -114,10 +117,11 @@ if __name__ == "__main__":
         image = cv2.imread(image_path)
 
         #image = cv2.resize(image, (96, 96))
-        faces = pc.detect_faces(image_path, pipeline, threshold=0.65, window_size=(96, 96), step_size=(16,16), n_keypoints=32)    
+        faces = pc.detect_faces(image_path, pipeline, threshold=0.65, window_size=(128, 128), step_size=(16,16), n_keypoints=32)    
 
-        for (x, y, w, h) in faces:
-            cv2.rectangle(image, (x, y), (x+w, y+h), (0, 255, 0), 2)
+        for x, y in faces:
+            size = 10
+            cv2.circle(image, (int(x), int(y)), size, (0, 255, 0), 2)
         
         cv2.imshow("Image", image)
         cv2.waitKey(0)
