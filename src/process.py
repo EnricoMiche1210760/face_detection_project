@@ -78,8 +78,6 @@ def difference_of_gaussian(image, show_image:bool=False):
         s2 = filters.gaussian(image, sigma*k)
         dog = s1 - s2
         dog = np.uint8(cv2.normalize(dog, None, 0, 255, cv2.NORM_MINMAX))
-
-
         if show_image:
             cv2.imshow("DOG", dog)
             cv2.waitKey(0)
@@ -95,7 +93,8 @@ def process_image(image_file, resize:bool=False, img_resize:tuple=(64, 64), diff
         dog = difference_of_gaussian(eq_image)
         return dog
     else:
-        _, thresh = cv2.threshold(eq_image, 127, 255, cv2.THRESH_BINARY)#+cv2.THRESH_OTSU)
+        thresh = cv2.adaptiveThreshold(eq_image,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,\
+                cv2.THRESH_BINARY,11,2)
     return thresh
 
 def show_image_with_keypoints(image, keypoints):

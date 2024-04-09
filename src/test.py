@@ -79,7 +79,7 @@ if __name__ == "__main__":
 
     if sys.argv[1] == "extract_features":
         import numpy as np
-        img_list = pc.load_images(pc.DATA_PATH+"/img_align_celeba/", number_of_images=5, random_seed=7)
+        img_list = pc.load_images(pc.DATA_PATH+"/img_align_celeba/", number_of_images=1, random_seed=7)
         images = []
         for img in img_list:
             images.append(cv2.imread(pc.DATA_PATH+"/img_align_celeba/"+img, cv2.IMREAD_GRAYSCALE))
@@ -89,7 +89,7 @@ if __name__ == "__main__":
         des_extend = []
         for img_file in img_list:
             img = pc.process_image(pc.DATA_PATH+"/img_align_celeba/"+img_file, resize=True, img_resize=(96, 96))
-            _, des = pc.extract_ORB_features(img, debug=True)
+            _, des = pc.extract_ORB_features(img, n_keypoints=32)
             des_append.append(des)
             des_extend.extend(des)
         
@@ -98,6 +98,11 @@ if __name__ == "__main__":
         print(len(des_extend))
         print(des_append[0:2])
         print(des_extend[0:2])
+
+        cv2.imshow("Image", img)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+
 
         print("Done 3")
 
@@ -117,7 +122,7 @@ if __name__ == "__main__":
         image = cv2.imread(image_path)
 
         #image = cv2.resize(image, (96, 96))
-        faces = pc.detect_faces(image_path, pipeline, threshold=0.65, window_size=(128, 128), step_size=(16,16), n_keypoints=32)    
+        faces = pc.detect_faces(image_path, pipeline, threshold=0.65, window_size=(96, 96), step_size=(16,16), n_keypoints=32)    
 
         for x, y in faces:
             size = 10
