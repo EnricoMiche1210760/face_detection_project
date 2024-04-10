@@ -63,7 +63,7 @@ def denoise_image(image_file):
     image = img_as_float(cv2.imread(image_file))
     #sigma_est = estimate_sigma(image, average_sigmas=True, channel_axis=-1)
     #patch_kw = dict(patch_size=5, patch_distance=6, channel_axis=-1)
-    denoised_image = cv2.GaussianBlur(image, (5, 5), 0)#denoise_nl_means(image, h=1.15 * sigma_est, sigma = sigma_est, fast_mode=True, **patch_kw)
+    denoised_image = cv2.GaussianBlur(image, (15, 15), 0)#denoise_nl_means(image, h=1.15 * sigma_est, sigma = sigma_est, fast_mode=True, **patch_kw)
     return denoised_image
 
 def equalize_image(image):
@@ -95,7 +95,8 @@ def process_image(image_file, resize:bool=False, img_resize:tuple=(64, 64), diff
         dog = difference_of_gaussian(eq_image)
         return dog
     else:
-        _, thresh = cv2.threshold(eq_image, 127, 255, cv2.THRESH_BINARY)#+cv2.THRESH_OTSU)
+        #_, thresh = cv2.threshold(eq_image, 127, 255, cv2.THRESH_TOZERO)#+cv2.THRESH_OTSU)
+        thresh = cv2.adaptiveThreshold(eq_image, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
     return thresh
 
 def show_image_with_keypoints(image, keypoints):
@@ -153,31 +154,55 @@ def sliding_window(image : np.array, window_size : tuple = (32,32), step_size : 
             roi = image[y:y + window_size[1], x:x + window_size[0]] #region of interest
             yield (x, y, roi)
 
+def sigmoid(x):
+    return 1 / (1 + np.exp(-x))
 
-
-def detect_faces(img_path, pipeline : object, threshold=0.5, window_size=(96, 96), step_size=(16, 16), n_keypoints=500):
-    preproc_img = pipeline.named_steps['preprocess'](img_path, resize=False)
-    
-    cv2.imshow("Image", preproc_img)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
-
-
+def detect_faces(img_path, pipeline : object, threshold=0.5, window_size=(96, 96), step_size=(16, 16), n_keypoints=500, resize=False, size=(96,96)):
+    preproc_img = pipeline.named_steps['preprocess'](img_path, resize=resize, img_resize=size)
     face_keypoints = []
+
+    if window_size is None:
+        keypoints, features = pipeline.named_steps['extract_features'](preproc_img, n_keypoints=n_keypoints)
+        
+        if features is None or features.shape[0] != n_keypoints:
+            return None
+        features = features.flatten()
+        features = np.array(features).reshape(1, -1)
+                
+        svm = pipeline.named_steps['svc']
+        score = svm.decision_function(features)
+        score = sigmoid(score)
+        y_pred = np.where(score > threshold, 1, 0)
+        print(y_pred, score)
+        window_keypoints = np.array([[kp[0], kp[1]] for kp, pred in zip(keypoints, y_pred) if pred == 1])
+        print(window_keypoints)
+        return window_keypoints
 
     for x, y, win in sliding_window(preproc_img, window_size=window_size, step_size=step_size):
         keypoints, features = pipeline.named_steps['extract_features'](win, n_keypoints=n_keypoints)
-    
+        
         if features is None or features.shape[0] != n_keypoints:
             continue
-        features = tuple(map(float, features.flatten()))
+        features = features.flatten()
         features = np.array(features).reshape(1, -1)
                 
         svm = pipeline.named_steps['svc']
         scores = svm.decision_function(features)
+        scores = sigmoid(scores)
         y_pred = np.where(scores > threshold, 1, 0)
 
+        print(y_pred, scores)
+                                        
         window_keypoints = np.array([[kp[0]+x, kp[1]+y] for kp, pred in zip(keypoints, y_pred) if pred == 1])
+
+        #if len(window_keypoints) > 0:
+        #    size = 10
+        #    cv2.circle(win, (int(window_keypoints[0][0]), int(window_keypoints[0][1])), size, (0, 0, 255), 2)
+        #    cv2.circle(win, (int(window_keypoints[0][0]-x), int(window_keypoints[0][1]-y)), size, (100, 100, 255), 2)
+        #    cv2.imshow("Image", win)
+        #    cv2.waitKey(0)
+        #    cv2.destroyAllWindows()
+
 
         face_keypoints.extend(window_keypoints)
 

@@ -79,7 +79,7 @@ if __name__ == "__main__":
 
     if sys.argv[1] == "extract_features":
         import numpy as np
-        img_list = pc.load_images(pc.DATA_PATH+"/img_align_celeba/", number_of_images=5, random_seed=7)
+        img_list = pc.load_images(pc.DATA_PATH+"/img_align_celeba/", number_of_images=1, random_seed=7)
         images = []
         for img in img_list:
             images.append(cv2.imread(pc.DATA_PATH+"/img_align_celeba/"+img, cv2.IMREAD_GRAYSCALE))
@@ -93,6 +93,9 @@ if __name__ == "__main__":
             des_append.append(des)
             des_extend.extend(des)
         
+        cv2.imshow("Image", images[0])
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
         
         print(len(des_append))
         print(len(des_extend))
@@ -105,10 +108,10 @@ if __name__ == "__main__":
         import joblib
         from matplotlib import image as mpimg
         #pipeline_save_path = pc.DATA_PATH+"/svm_model_3.pkl"
-        pipeline_save_path = pc.DATA_PATH+"/svm_model_dog.pkl"
+        pipeline_save_path = pc.DATA_PATH+"/svm_model_threshold_adaptive.pkl"
         
         
-        image_path = pc.DATA_PATH+"/final/totti_del_piero.jpg"
+        image_path = pc.DATA_PATH+"/final/Valentino_Rossi_2017.jpg"
 
         pipeline = joblib.load(pipeline_save_path)
 
@@ -116,8 +119,11 @@ if __name__ == "__main__":
 
         image = cv2.imread(image_path)
 
-        #image = cv2.resize(image, (96, 96))
-        faces = pc.detect_faces(image_path, pipeline, threshold=0.65, window_size=(128, 128), step_size=(16,16), n_keypoints=32)    
+        image = cv2.resize(image, (256, 256))
+        faces = pc.detect_faces(image_path, pipeline, threshold=0.5, window_size=(128, 128), step_size=(64, 64), n_keypoints=32, resize=True, size=(256, 256))
+
+        #faces = pc.detect_faces(image_path, pipeline, threshold=0.65, window_size=(128, 128), step_size=(32,32), n_keypoints=32)    
+
 
         for x, y in faces:
             size = 10
