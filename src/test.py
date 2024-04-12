@@ -78,7 +78,7 @@ if __name__ == "__main__":
         print(images[2].shape)
         print("Done 2")
 
-    if sys.argv[1] == "extract_features":
+    if sys.argv[1] == "extract_ORB_features":
         import numpy as np
         img_list = pc.load_images(pc.DATA_PATH+"/img_align_celeba/", number_of_images=1, random_seed=7)
         images = []
@@ -105,6 +105,35 @@ if __name__ == "__main__":
         print(des_extend[0:2])
 
         print("Done 3")
+
+    if sys.argv[1] == "extract_SIFT_features":
+        import numpy as np
+        img_list = pc.load_images(pc.DATA_PATH+"/img_align_celeba/", number_of_images=10, random_seed=7)
+        images = []
+        for img in img_list:
+            images.append(cv2.imread(pc.DATA_PATH+"/img_align_celeba/"+img, cv2.IMREAD_GRAYSCALE))
+        
+
+        des_append = []
+        des_extend = []
+        for img_file in img_list:
+            image = cv2.imread(pc.DATA_PATH+"/img_align_celeba/"+img_file)
+            img = pc.process_image(image, resize=True, img_resize=(128, 128))#, diff_of_gaussian=True)
+            kp, des = pc.extract_SIFT_features(img, debug=True)
+
+            sorted_kp = sorted(kp, key=lambda x: x.response, reverse=True)
+            print(sorted_kp[0:32])
+
+            print(len(kp))
+            print(des.shape)
+
+        
+        #cv2.imshow("Image", images[0])
+        #cv2.waitKey(0)
+        #cv2.destroyAllWindows()
+        
+        print("Done 3")
+
 
     if sys.argv[1] == "test_pipeline":
         import joblib

@@ -3,7 +3,7 @@ import zipfile
 import cv2
 from skimage.restoration import denoise_nl_means, estimate_sigma
 from skimage import img_as_float, filters
-from skimage.feature import ORB
+from skimage.feature import ORB, SIFT
 import numpy as np
 import user_warnings as uw
 import matplotlib.pyplot as plt
@@ -55,6 +55,35 @@ def load_image(path:str, filename=None):
             return None
     return filename
 
+def extract_patches(img_list, size:tuple=(96,96), n_patches=5000, random_seed=7):
+    np.random.seed(random_seed)
+    patches = []
+    n_patches = round(n_patches / len(img_list))-1 
+    print(n_patches)
+    for img in img_list:
+        image = cv2.imread(img)
+        if image.shape[0] != 0 and image.shape[1] != 0:
+            patches.append(image)
+        for i in range(n_patches):
+            width= image.shape[0]-size[0]
+            heigth = image.shape[1]-size[1]
+            if width < 0 or heigth < 0:
+                continue
+            if width > 0: 
+                x = np.random.randint(0, width)
+            else:
+                x = 0
+            if heigth > 0:
+                y = np.random.randint(0, heigth)
+            else:
+                y = 0
+            patch = image[y:y+size[1], x:x+size[0]]
+            if patch.shape[0] == 0 or patch.shape[1] == 0:
+                continue
+            patches.append(patch)
+    return patches
+
+
 def handle_mouse(event, x, y, flags, param):
     if event == cv2.EVENT_LBUTTONDOWN:
         print("Left button clicked at: ({}, {})".format(x, y))
@@ -69,32 +98,15 @@ def equalize_image(image):
     gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     return cv2.equalizeHist(gray_image)
 
-def difference_of_gaussian(image, show_image:bool=False):
-    k = 1.6 # Gaussian blur factor
-    for idx, sigma in enumerate([4, 8, 16, 32]):
-        s1 = filters.gaussian(image, sigma)
-        s2 = filters.gaussian(image, sigma*k)
-        dog = s1 - s2
-        dog = np.uint8(cv2.normalize(dog, None, 0, 255, cv2.NORM_MINMAX))
-
-
-        if show_image:
-            cv2.imshow("DOG", dog)
-            cv2.waitKey(0)
-            cv2.destroyAllWindows()
-        return dog
-
 def process_image(image, resize:bool=False, img_resize:tuple=(64, 64), diff_of_gaussian:bool=False):
     img = denoise_image(image)
     if resize:
         img = cv2.resize(img, img_resize)
     eq_image = equalize_image(img)
     if diff_of_gaussian:
-        dog = difference_of_gaussian(eq_image)
-        return dog
-    else:
         thresh = cv2.adaptiveThreshold(eq_image, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
-    return thresh
+        return thresh
+    return eq_image
 
 def show_image_with_keypoints(image, keypoints):
     img = cv2.drawKeypoints(image, keypoints, None)
@@ -107,16 +119,23 @@ def show_image_with_keypoints(image, keypoints):
             break
     cv2.destroyAllWindows()
 
-def extract_SIFT_features(image : np.ndarray, debug:bool=False):
-    sift = cv2.SIFT_create()
-    kp = sift.detect(image, None)
+def extract_SIFT_features(image : np.ndarray, n_optimal_keypoints=128, debug:bool=False):
+    sift = cv2.SIFT_create(nfeatures=SIFT_FEATURES)
+    kpt, des = sift.detectAndCompute(image, None)
     if debug:
-        show_image_with_keypoints(image, kp)
-    kp = sorted(kp, key = lambda x:x.response, reverse=True)[:SIFT_FEATURES]
-    kp, des = sift.compute(image, kp)
-    return (kp, des)
+        show_image_with_keypoints(image, kpt)
+    
+    if len(kpt) < n_optimal_keypoints:
+        return (kpt, des)
 
-def extract_ORB_features(image : np.ndarray, debug:bool=False, n_keypoints:int=500):
+    sorted_indices = np.argsort([kp.response for kp in kpt])[::-1]
+    kpt = [kpt[i] for i in sorted_indices[:n_optimal_keypoints]]
+    des = des[sorted_indices[:n_optimal_keypoints]]
+
+
+    return (kpt, des)
+
+def extract_ORB_features(image : np.ndarray, n_keypoints:int=500, debug:bool=False):
     orb = ORB(n_keypoints=n_keypoints)
     try:
         orb.detect_and_extract(image)
