@@ -3,6 +3,7 @@ import process as pc
 import cv2
 import sys
 import os
+from skimage import transform
 
 positive_images_path = pc.DATA_PATH+"/img_align_celeba"
 
@@ -139,19 +140,25 @@ if __name__ == "__main__":
         import joblib
         from matplotlib import image as mpimg
         #pipeline_save_path = pc.DATA_PATH+"/svm_model_3.pkl"
-        pipeline_save_path = pc.DATA_PATH+"/svm_model_threshold_adaptive.pkl"
+        pipeline_save_path = pc.DATA_PATH+"/sift_features.pkl"
         
         
-        image_path = pc.DATA_PATH+"/final/Valentino_Rossi_2017.jpg"
+        image_path = pc.DATA_PATH+"/final/totti_del_piero.jpg"
 
         pipeline = joblib.load(pipeline_save_path)
 
         svm = pipeline.named_steps['svc']
 
         image = cv2.imread(image_path)
+        print(image.shape)
+        height = image.shape[0]/2
+        width = image.shape[1]/2
+        image = cv2.resize(image, (int(width), int(height)))
+        print(image.shape)
 
-        image = cv2.resize(image, (256, 256))
-        faces = pc.detect_faces(image, pipeline, threshold=0.5, window_size=(128, 128), step_size=(64, 64), n_keypoints=32, resize=False)
+        #faces = pc.detect_faces(image, pipeline, threshold=0.5, method='SIFT', window_size=None, n_keypoints=40, resize=False)
+        faces = pc.detect_faces(image, pipeline, threshold=0.5, method='SIFT', window_size=(128, 128), step_size=(64, 64), n_keypoints=40, resize=False)
+
 
         for x, y in faces:
             size = 10
