@@ -143,7 +143,7 @@ if __name__ == "__main__":
         pipeline_save_path = pc.DATA_PATH+"/sift_features.pkl"
         
         
-        image_path = pc.DATA_PATH+"/final/totti_del_piero.jpg"
+        image_path = pc.DATA_PATH+"/final/Valentino_Rossi_2017.jpg"
 
         pipeline = joblib.load(pipeline_save_path)
 

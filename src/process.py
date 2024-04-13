@@ -187,11 +187,12 @@ def detect_faces(image, pipeline : object, method='SIFT', threshold=0.5, window_
         features = features.flatten()
         features = np.array(features).reshape(1, -1)
         features = scaler.transform(features)
-        print(features)
         svm = pipeline.named_steps['svc']
         score = svm.decision_function(features)
+        print(score)
         score = sigmoid(score)
-        y_pred = np.where(score > threshold, 1, 0)
+        print(score)
+        y_pred = svm.predict(features)#y_pred = np.where(score > threshold, 1, 0)
         print(y_pred, score)
         #window_keypoints = np.array([[kp[0], kp[1]] for kp, pred in zip(keypoints, y_pred) if pred == 1])
         window_keypoints = np.array([[kp.pt[0], kp.pt[1]] for kp, pred in zip(keypoints, y_pred) if pred == 1])
@@ -217,9 +218,11 @@ def detect_faces(image, pipeline : object, method='SIFT', threshold=0.5, window_
                 
         svm = pipeline.named_steps['svc']
         scores = svm.decision_function(features)
+        print(scores)
         scores = sigmoid(scores)
+        print(scores)
         
-        y_pred = np.where(scores > threshold, 1, 0)
+        y_pred = svm.predict(features)#np.where(scores > threshold, 1, 0)
 
         print(y_pred, scores)
                                         
