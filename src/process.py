@@ -154,15 +154,14 @@ def extract_ORB_features(image : np.ndarray, n_keypoints:int=500, debug:bool=Fal
         show_image_with_keypoints(image, kpt)
     return (kp, des)
 
-def extract_HOG_features(image):
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    gray = cv2.equalizeHist(gray)
-    features, hog_image = hog(gray, orientations=9, pixels_per_cell=(8, 8),
-                              cells_per_block=(2, 2), visualize=True, block_norm='L2-Hys')
+def extract_HOG_features(image, cell_size=(8, 8), block_size=(2, 2), nbins=9):
+    image = cv2.equalizeHist(image)
+    features, hog_image = hog(image, orientations=nbins, pixels_per_cell=cell_size,
+                              cells_per_block=block_size, visualize=True, block_norm='L2-Hys')
     
-    cv2.imshow("HOG Image", hog_image)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    #cv2.imshow("HOG Image", hog_image)
+    #cv2.waitKey(0)
+    #cv2.destroyAllWindows()
 
     return features
 
