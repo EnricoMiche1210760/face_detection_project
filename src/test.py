@@ -3,6 +3,7 @@ import process as pc
 import cv2
 import sys
 import os
+import numpy as np
 from skimage import transform
 
 positive_images_path = pc.DATA_PATH+"/img_align_celeba"
@@ -80,40 +81,25 @@ if __name__ == "__main__":
         print("Done 2")
 
     if sys.argv[1] == "extract_ORB_features":
-        import numpy as np
-        img_list = pc.load_images(pc.DATA_PATH+"/img_align_celeba/", number_of_images=1, random_seed=7)
+        img_list = pc.load_images(pc.DATA_PATH+"/img_align_celeba/", number_of_images=10, random_seed=7)
         images = []
         for img in img_list:
             images.append(cv2.imread(pc.DATA_PATH+"/img_align_celeba/"+img, cv2.IMREAD_GRAYSCALE))
-        
 
         des_append = []
         des_extend = []
         for img_file in img_list:
             image = cv2.imread(pc.DATA_PATH+"/img_align_celeba/"+img_file)
-            img = pc.process_image(image, resize=True, img_resize=(96, 96))
+            img = pc.process_image(image, resize=True, img_resize=(128, 128))
             _, des = pc.extract_ORB_features(img, debug=True)
-            des_append.append(des)
-            des_extend.extend(des)
         
-        cv2.imshow("Image", images[0])
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
-        
-        print(len(des_append))
-        print(len(des_extend))
-        print(des_append[0:2])
-        print(des_extend[0:2])
-
         print("Done 3")
 
     if sys.argv[1] == "extract_SIFT_features":
-        import numpy as np
         img_list = pc.load_images(pc.DATA_PATH+"/img_align_celeba/", number_of_images=10, random_seed=7)
         images = []
         for img in img_list:
             images.append(cv2.imread(pc.DATA_PATH+"/img_align_celeba/"+img, cv2.IMREAD_GRAYSCALE))
-        
 
         des_append = []
         des_extend = []
@@ -122,27 +108,13 @@ if __name__ == "__main__":
             img = pc.process_image(image, resize=True, img_resize=(128, 128))#, diff_of_gaussian=True)
             kp, des = pc.extract_SIFT_features(img, debug=True)
 
-            sorted_kp = sorted(kp, key=lambda x: x.response, reverse=True)
-            print(sorted_kp[0:32])
-
-            print(len(kp))
-            print(des.shape)
-
-        
-        #cv2.imshow("Image", images[0])
-        #cv2.waitKey(0)
-        #cv2.destroyAllWindows()
-        
-        print("Done 3")
+        print("Done 4")
 
 
-    if sys.argv[1] == "test_pipeline":
+    if sys.argv[1] == "test_SIFT_pipeline":
         import joblib
         from matplotlib import image as mpimg
-        #pipeline_save_path = pc.DATA_PATH+"/svm_model_3.pkl"
-        pipeline_save_path = pc.DATA_PATH+"/sift_features.pkl"
-        
-        
+        pipeline_save_path = pc.DATA_PATH+"/sift_features_32.pkl"
         image_path = pc.DATA_PATH+"/final/Valentino_Rossi_2017.jpg"
 
         pipeline = joblib.load(pipeline_save_path)
@@ -156,14 +128,46 @@ if __name__ == "__main__":
         image = cv2.resize(image, (int(width), int(height)))
         print(image.shape)
 
-        #faces = pc.detect_faces(image, pipeline, threshold=0.5, method='SIFT', window_size=None, n_keypoints=40, resize=False)
-        faces = pc.detect_faces(image, pipeline, threshold=0.5, method='SIFT', window_size=(128, 128), step_size=(64, 64), n_keypoints=40, resize=False)
+        try:
+            #faces, _ = pc.detect_faces(image, pipeline, threshold=0.5, method='SIFT', window_size=None, n_keypoints=40, resize=False)
+            faces, _ = pc.detect_faces(image, pipeline, method='SIFT', threshold=0.65, window_size=(128, 128), step_size=(64, 64), n_keypoints=32, resize=False)
 
+            for x, y in faces:
+                size = 10
+                cv2.circle(image, (int(x), int(y)), size, (0, 255, 0), 2)
+        except:
+            print("No face detected")
 
-        for x, y in faces:
-            size = 10
-            cv2.circle(image, (int(x), int(y)), size, (0, 255, 0), 2)
-        
+        cv2.imshow("Image", image)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+
+    if sys.argv[1] == "test_ORB_pipeline":
+        import joblib
+        from matplotlib import image as mpimg
+        pipeline_save_path = pc.DATA_PATH+"/svm_model_3.pkl"
+        image_path = pc.DATA_PATH+"/final/Valentino_Rossi_2017.jpg"
+
+        pipeline = joblib.load(pipeline_save_path)
+
+        svm = pipeline.named_steps['svc']
+
+        image = cv2.imread(image_path)
+        print(image.shape)
+        height = image.shape[0]/2
+        width = image.shape[1]/2
+        image = cv2.resize(image, (int(width), int(height)))
+        print(image.shape)
+
+        try:
+            #faces, _ = pc.detect_faces(image, pipeline, threshold=0.5, method='ORB', window_size=None, n_keypoints=40, resize=False)
+            faces, _ = pc.detect_faces(image, pipeline, threshold=0.5, method='ORB', window_size=(128, 128), step_size=(64, 64), n_keypoints=40, resize=False)
+            for x, y in faces:
+                size = 10
+                cv2.circle(image, (int(x), int(y)), size, (0, 255, 0), 2)
+        except:
+            print("No face detected")
+
         cv2.imshow("Image", image)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
