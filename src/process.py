@@ -154,7 +154,7 @@ def extract_ORB_features(image : np.ndarray, n_keypoints:int=500, debug:bool=Fal
         show_image_with_keypoints(image, kpt)
     return (kp, des)
 
-def extract_HOG_features(image, cell_size=(8, 8), block_size=(2, 2), nbins=9):
+def extract_HOG_features(image, cell_size=(8, 8), block_size=(3, 3), nbins=9):
     image = cv2.equalizeHist(image)
     features, hog_image = hog(image, orientations=nbins, pixels_per_cell=cell_size,
                               cells_per_block=block_size, visualize=True, block_norm='L2-Hys')
