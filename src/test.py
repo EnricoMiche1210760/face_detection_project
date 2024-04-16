@@ -105,7 +105,7 @@ if __name__ == "__main__":
         des_extend = []
         for img_file in img_list:
             image = cv2.imread(pc.DATA_PATH+"/img_align_celeba/"+img_file)
-            img = pc.process_image(image, resize=True, img_resize=(128, 128))#, diff_of_gaussian=True)
+            img = pc.process_image(image, resize=True, img_resize=(128, 128))
             kp, des = pc.extract_SIFT_features(img, debug=True)
 
         print("Done 4")
@@ -129,7 +129,6 @@ if __name__ == "__main__":
         print(image.shape)
 
         try:
-            #faces, _ = pc.detect_faces(image, pipeline, threshold=0.5, method='SIFT', window_size=None, n_keypoints=40, resize=False)
             faces, _ = pc.detect_faces(image, pipeline, method='SIFT', threshold=0.65, window_size=(128, 128), step_size=(64, 64), n_keypoints=32, resize=False)
 
             for x, y in faces:
@@ -160,7 +159,6 @@ if __name__ == "__main__":
         print(image.shape)
 
         try:
-            #faces, _ = pc.detect_faces(image, pipeline, threshold=0.5, method='ORB', window_size=None, n_keypoints=40, resize=False)
             faces, _ = pc.detect_faces(image, pipeline, threshold=0.5, method='ORB', window_size=(128, 128), step_size=(64, 64), n_keypoints=40, resize=False)
             for x, y in faces:
                 size = 10

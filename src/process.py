@@ -155,14 +155,10 @@ def extract_ORB_features(image : np.ndarray, n_keypoints:int=500, debug:bool=Fal
     return (kp, des)
 
 def extract_HOG_features(image, cell_size=(8, 8), block_size=(3, 3), nbins=9):
-    image = cv2.equalizeHist(image)
-    features, hog_image = hog(image, orientations=nbins, pixels_per_cell=cell_size,
-                              cells_per_block=block_size, visualize=True, block_norm='L2-Hys')
+    #image = cv2.equalizeHist(image)
+    features = hog(image, orientations=nbins, pixels_per_cell=cell_size,
+                              cells_per_block=block_size, block_norm='L2-Hys')
    
-    #cv2.imshow("HOG Image", hog_image)
-    #cv2.waitKey(0)
-    #cv2.destroyAllWindows()
-
     return features
 
 
@@ -203,9 +199,7 @@ def get_image_prediction(image, pipeline : object, n_keypoints, method='SIFT', v
     if method == 'HOG':
         scaler = pipeline.named_steps['normalize']
         features = pipeline.named_steps['extract_features'](image)
-        keypoints = [0, 0]
-        if features.shape[0] != 8100:
-            return None
+        keypoints = np.zeros((1, 2), dtype=np.float32)
 
     elif features is None or features.shape[0] != n_keypoints:
         return None
@@ -218,8 +212,9 @@ def get_image_prediction(image, pipeline : object, n_keypoints, method='SIFT', v
         features = scaler.transform(features)
    
     svm = pipeline.named_steps['svc']
-    score = sigmoid(svm.decision_function(features))
     score = svm.decision_function(features)
+    score = sigmoid(svm.decision_function(features))
+
     y_pred = np.where(score > threshold, 1, 0)
 
     if verbose:
@@ -232,8 +227,9 @@ def detect_faces(image, pipeline : object, method='SIFT', threshold=0.5, window_
     face_keypoints = []
     score = 0
     if window_size is None:
-        if method != 'HOG':
-            preproc_img = pipeline.named_steps['preprocess'](image, resize=resize, img_resize=image_size)
+
+        preproc_img = pipeline.named_steps['preprocess'](image, resize=resize, img_resize=image_size)
+
         try:
             y_pred, score, keypoints = get_image_prediction(preproc_img, pipeline, n_keypoints,\
                                                                        method=method, threshold=threshold, verbose=verbose)
@@ -250,10 +246,8 @@ def detect_faces(image, pipeline : object, method='SIFT', threshold=0.5, window_
             return window_keypoints, score
         except:
             return None
-    if method != 'HOG':
-        image = pipeline.named_steps['preprocess'](image, resize=resize, img_resize=image_size)
-    else:
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    
+    image = pipeline.named_steps['preprocess'](image, resize=resize, img_resize=image_size)
 
     for x, y, win in sliding_window(image, window_size=window_size, step_size=step_size):
         try:
@@ -277,9 +271,6 @@ def detect_faces(image, pipeline : object, method='SIFT', threshold=0.5, window_
 
 
         face_keypoints.extend(window_keypoints)
-
-        print("Window keypoints: ", window_keypoints)
-        print("Score: ", score)
 
     return face_keypoints, score
 
