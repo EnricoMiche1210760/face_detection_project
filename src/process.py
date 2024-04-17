@@ -194,30 +194,31 @@ def sliding_window(image : np.array, window_size : tuple = (32,32), step_size : 
 def sigmoid(x):
     return 1 / (1 + np.exp(-x))
 
-def get_image_prediction(image, pipeline : object, n_keypoints, method='SIFT', verbose = False, threshold=0.5):
+def extract_features(image, pipeline : object, n_keypoints, method='SIFT'):    
     
     if method == 'SIFT':
-        keypoints, features = pipeline.named_steps['extract_features'](image, n_optimal_keypoints=n_keypoints)
-        scaler = pipeline.named_steps['normalize']
+        _, features = pipeline.named_steps['extract_features'](image, n_optimal_keypoints=n_keypoints)
 
     elif method == 'ORB':
-        keypoints, features = pipeline.named_steps['extract_features'](image, n_keypoints=n_keypoints)
+        _, features = pipeline.named_steps['extract_features'](image, n_keypoints=n_keypoints)
 
-    
     if method == 'HOG':
         #scaler = pipeline.named_steps['normalize']
         features = pipeline.named_steps['extract_features'](image, equalize=True, debug=True)
-        keypoints = np.zeros((1, 2), dtype=np.float32)
         print(features.shape)
 
     elif features is None or features.shape[0] != n_keypoints:
         return None
     
+    return features
+
+def get_image_prediction(features, pipeline : object, method='SIFT', verbose = False, threshold=0.5):    
     if(method != 'HOG'):
         features = features.flatten()
-    features = np.array(features).reshape(1, -1)
+        features = np.array(features).reshape(1, -1)
 
     if method == 'SIFT': #or method == 'HOG':
+        scaler = pipeline.named_steps['normalize']
         features = scaler.transform(features)
     svm = pipeline.named_steps['svc']
     score = svm.decision_function(features)
@@ -228,7 +229,7 @@ def get_image_prediction(image, pipeline : object, n_keypoints, method='SIFT', v
     if verbose:
         print(y_pred, score)
 
-    return (y_pred, score, keypoints)
+    return (y_pred, score)
 
 def detect_faces(image, pipeline : object, method='SIFT', threshold=0.5, window_size=(96, 96), \
                  step_size=(16, 16), n_keypoints=500, resize=False, image_size=(96,96), verbose=False, notebook=False):
@@ -242,8 +243,9 @@ def detect_faces(image, pipeline : object, method='SIFT', threshold=0.5, window_
             preproc_img = pipeline.named_steps['preprocess'](image, resize=resize, equalize=False, img_resize=image_size)
 
         try:
-            y_pred, score, keypoints = get_image_prediction(preproc_img, pipeline, n_keypoints,\
-                                                                       method=method, threshold=threshold, verbose=verbose)
+            features = extract_features(image, pipeline, n_keypoints, method=method)
+            y_pred, score = get_image_prediction(features, pipeline, method=method, threshold=threshold, verbose=verbose)
+            keypoints = np.array((2, 1), dtype=int)
             if method == 'ORB':
                 window_keypoints = np.array([[kp[0], kp[1]] for kp, pred in zip(keypoints, y_pred) if pred == 1])
             elif method == 'SIFT':
@@ -263,30 +265,34 @@ def detect_faces(image, pipeline : object, method='SIFT', threshold=0.5, window_
     elif resize:
         image = pipeline.named_steps['preprocess'](image, resize=resize, equalize=False, img_resize=image_size)
 
-
+    features = None
     for x, y, win in sliding_window(image, window_size=window_size, step_size=step_size):
         try:
-            y_pred, score, keypoints = get_image_prediction(win, pipeline, n_keypoints, method=method,\
-                                                                       threshold=threshold, verbose=verbose)
+            if features is None:
+                features = extract_features(win, pipeline, n_keypoints, method=method)
+            else:
+                features = np.vstack((features, extract_features(win, pipeline, n_keypoints, method=method)))
         except:
             continue
-        
-        if method == 'ORB':
-            window_keypoints = np.array([[kp[0]+x, kp[1]+y] for kp, pred in zip(keypoints, y_pred) if pred == 1])
-        elif method == 'SIFT':        
-            window_keypoints = np.array([[kp.pt[0]+x, kp.pt[1]+y] for kp, pred in zip(keypoints, y_pred) if pred == 1])
-        elif method == 'HOG':
-            window_keypoints = np.array([[kp[0]+x, kp[1]+y] for kp, pred in zip(keypoints, y_pred) if pred == 1])    
+    
+    print(features.shape)
+    y_pred, score = get_image_prediction(features, pipeline, method=method,\
+                                                                threshold=threshold, verbose=verbose)
 
-        if verbose:
-            if y_pred == 1:
-                if method == 'ORB' or method == 'HOG':
-                    keypoints = cv2.KeyPoint_convert(keypoints)
-                #show_image_with_keypoints(win, keypoints, notebook=notebook)
-            print(window_keypoints)
+    keypoints = np.array((2, 1), dtype=int)
+    if method == 'ORB':
+        face_keypoints = np.array([[kp[0]+x, kp[1]+y] for kp, pred in zip(keypoints, y_pred) if pred == 1])
+    elif method == 'SIFT':        
+        face_keypoints = np.array([[kp.pt[0]+x, kp.pt[1]+y] for kp, pred in zip(keypoints, y_pred) if pred == 1])
+    elif method == 'HOG':
+        face_keypoints = np.array([[kp[0]+x, kp[1]+y] for kp, pred in zip(keypoints, y_pred) if pred == 1])    
 
-
-        face_keypoints.extend(window_keypoints)
+    if verbose:
+        if y_pred == 1:
+            if method == 'ORB' or method == 'HOG':
+                keypoints = cv2.KeyPoint_convert(keypoints)
+            #show_image_with_keypoints(win, keypoints, notebook=notebook)
+        print(face_keypoints)
 
     return face_keypoints, score
 
