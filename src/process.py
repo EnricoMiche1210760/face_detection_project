@@ -59,7 +59,7 @@ def extract_patches(img_list, size:tuple=(96,96), n_patches=5000, random_seed=7)
     np.random.seed(random_seed)
     patches = []
     n_patches = round(n_patches / len(img_list))-1 
-    print(n_patches)
+
     for img in img_list:
         image = cv2.imread(img)
         if image.shape[0] != 0 and image.shape[1] != 0:
@@ -98,15 +98,16 @@ def equalize_image(image):
     gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     return cv2.equalizeHist(gray_image)
 
-def process_image(image, resize:bool=False, img_resize:tuple=(64, 64), diff_of_gaussian:bool=False):
+def process_image(image, resize:bool=False, equalize:bool=True, img_resize:tuple=(64, 64), diff_of_gaussian:bool=False):
     img = denoise_image(image)
     if resize:
         img = cv2.resize(img, img_resize)
-    eq_image = equalize_image(img)
+    if equalize:
+        img = equalize_image(img)
     if diff_of_gaussian:
-        thresh = cv2.adaptiveThreshold(eq_image, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
+        thresh = cv2.adaptiveThreshold(img, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
         return thresh
-    return eq_image
+    return img
 
 def show_image_with_keypoints(image, keypoints, notebook=False):
     img_with_keypoints = cv2.drawKeypoints(image, keypoints, image)
@@ -154,11 +155,16 @@ def extract_ORB_features(image : np.ndarray, n_keypoints:int=500, debug:bool=Fal
         show_image_with_keypoints(image, kpt)
     return (kp, des)
 
-def extract_HOG_features(image, cell_size=(8, 8), block_size=(3, 3), nbins=9):
-    #image = cv2.equalizeHist(image)
-    features = hog(image, orientations=nbins, pixels_per_cell=cell_size,
-                              cells_per_block=block_size, block_norm='L2-Hys')
-   
+def extract_HOG_features(image, cell_size=(8, 8), block_size=(3, 3), nbins=9, debug=False, equalize=False):
+    if equalize:
+        image = np.uint8(cv2.normalize(image, None, 0, 255, cv2.NORM_MINMAX))
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        image = cv2.equalizeHist(image)
+    features, hog_img = hog(image, orientations=nbins, pixels_per_cell=cell_size,
+                              cells_per_block=block_size, block_norm='L2-Hys', visualize=True)
+    if debug:
+        plt.imshow(hog_img, cmap='gray')
+        plt.show()
     return features
 
 
@@ -189,6 +195,7 @@ def sigmoid(x):
     return 1 / (1 + np.exp(-x))
 
 def get_image_prediction(image, pipeline : object, n_keypoints, method='SIFT', verbose = False, threshold=0.5):
+    
     if method == 'SIFT':
         keypoints, features = pipeline.named_steps['extract_features'](image, n_optimal_keypoints=n_keypoints)
         scaler = pipeline.named_steps['normalize']
@@ -196,10 +203,12 @@ def get_image_prediction(image, pipeline : object, n_keypoints, method='SIFT', v
     elif method == 'ORB':
         keypoints, features = pipeline.named_steps['extract_features'](image, n_keypoints=n_keypoints)
 
+    
     if method == 'HOG':
-        scaler = pipeline.named_steps['normalize']
-        features = pipeline.named_steps['extract_features'](image)
+        #scaler = pipeline.named_steps['normalize']
+        features = pipeline.named_steps['extract_features'](image, equalize=True, debug=True)
         keypoints = np.zeros((1, 2), dtype=np.float32)
+        print(features.shape)
 
     elif features is None or features.shape[0] != n_keypoints:
         return None
@@ -208,14 +217,13 @@ def get_image_prediction(image, pipeline : object, n_keypoints, method='SIFT', v
         features = features.flatten()
     features = np.array(features).reshape(1, -1)
 
-    if method == 'SIFT' or method == 'HOG':
+    if method == 'SIFT': #or method == 'HOG':
         features = scaler.transform(features)
-   
     svm = pipeline.named_steps['svc']
     score = svm.decision_function(features)
     score = sigmoid(svm.decision_function(features))
 
-    y_pred = np.where(score > threshold, 1, 0)
+    y_pred = svm.predict(features)#np.where(score > threshold, 1, 0)
 
     if verbose:
         print(y_pred, score)
@@ -228,7 +236,10 @@ def detect_faces(image, pipeline : object, method='SIFT', threshold=0.5, window_
     score = 0
     if window_size is None:
 
-        preproc_img = pipeline.named_steps['preprocess'](image, resize=resize, img_resize=image_size)
+        if(method != 'HOG'):
+            preproc_img = pipeline.named_steps['preprocess'](image, resize=resize, img_resize=image_size)
+        elif resize:
+            preproc_img = pipeline.named_steps['preprocess'](image, resize=resize, equalize=False, img_resize=image_size)
 
         try:
             y_pred, score, keypoints = get_image_prediction(preproc_img, pipeline, n_keypoints,\
@@ -247,7 +258,11 @@ def detect_faces(image, pipeline : object, method='SIFT', threshold=0.5, window_
         except:
             return None
     
-    image = pipeline.named_steps['preprocess'](image, resize=resize, img_resize=image_size)
+    if(method != 'HOG'):
+        image = pipeline.named_steps['preprocess'](image, resize=resize, img_resize=image_size)
+    elif resize:
+        image = pipeline.named_steps['preprocess'](image, resize=resize, equalize=False, img_resize=image_size)
+
 
     for x, y, win in sliding_window(image, window_size=window_size, step_size=step_size):
         try:
@@ -264,9 +279,10 @@ def detect_faces(image, pipeline : object, method='SIFT', threshold=0.5, window_
             window_keypoints = np.array([[kp[0]+x, kp[1]+y] for kp, pred in zip(keypoints, y_pred) if pred == 1])    
 
         if verbose:
-            if method == 'ORB' or method == 'HOG':
-                keypoints = cv2.KeyPoint_convert(keypoints)
-            show_image_with_keypoints(win, keypoints, notebook=notebook)
+            if y_pred == 1:
+                if method == 'ORB' or method == 'HOG':
+                    keypoints = cv2.KeyPoint_convert(keypoints)
+                #show_image_with_keypoints(win, keypoints, notebook=notebook)
             print(window_keypoints)
 
 
