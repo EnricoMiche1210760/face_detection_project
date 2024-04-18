@@ -93,11 +93,6 @@ def denoise_image(image):
     denoised_image = cv2.GaussianBlur(image, (15, 15), 0)
     return denoised_image
 
-def equalize_image(image):
-    image = np.uint8(cv2.normalize(image, None, 0, 255, cv2.NORM_MINMAX))
-    gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    return cv2.equalizeHist(gray_image)
-
 def process_image(image, resize:bool=False, equalize:bool=True, img_resize:tuple=(64, 64), diff_of_gaussian:bool=False):
     img = denoise_image(image)
     if resize:
@@ -155,11 +150,16 @@ def extract_ORB_features(image : np.ndarray, n_keypoints:int=500, debug:bool=Fal
         show_image_with_keypoints(image, kpt)
     return (kp, des)
 
+def equalize_image(image):
+    #image = np.uint8(cv2.normalize(image, None, 0, 255, cv2.NORM_MINMAX))
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    image = cv2.equalizeHist(image)
+    return image
+
+
 def extract_HOG_features(image, cell_size=(8, 8), block_size=(3, 3), nbins=9, debug=False, equalize=False):
     if equalize:
-        image = np.uint8(cv2.normalize(image, None, 0, 255, cv2.NORM_MINMAX))
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        image = cv2.equalizeHist(image)
+        image = equalize_image(image)
     features, hog_img = hog(image, orientations=nbins, pixels_per_cell=cell_size,
                               cells_per_block=block_size, block_norm='L2-Hys', visualize=True)
     if debug:
@@ -204,10 +204,10 @@ def extract_features(image, pipeline : object, n_keypoints, method='SIFT'):
 
     if method == 'HOG':
         #scaler = pipeline.named_steps['normalize']
-        features = pipeline.named_steps['extract_features'](image, equalize=True, debug=True)
-        print(features.shape)
+        features = pipeline.named_steps['extract_features'](image, debug=True)#, equalize=True)
 
     elif features is None or features.shape[0] != n_keypoints:
+        print("HEY: ", features.shape[0])
         return None
     
     return features
@@ -232,15 +232,19 @@ def get_image_prediction(features, pipeline : object, method='SIFT', verbose = F
     return (y_pred, score)
 
 def detect_faces(image, pipeline : object, method='SIFT', threshold=0.5, window_size=(96, 96), \
-                 step_size=(16, 16), n_keypoints=500, resize=False, image_size=(96,96), verbose=False, notebook=False):
+                 step_size=(16, 16), n_keypoints=500, resize=False, image_size=(96,96), verbose=False, notebook=False, preprocess=True):
     face_keypoints = []
     score = 0
     if window_size is None:
 
         if(method != 'HOG'):
             preproc_img = pipeline.named_steps['preprocess'](image, resize=resize, img_resize=image_size)
-        elif resize:
+        elif preprocess:
             preproc_img = pipeline.named_steps['preprocess'](image, resize=resize, equalize=False, img_resize=image_size)
+        else:
+            if resize:
+                image = cv2.resize(image, image_size)
+            preproc_img = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
         try:
             features = extract_features(image, pipeline, n_keypoints, method=method)
@@ -262,20 +266,27 @@ def detect_faces(image, pipeline : object, method='SIFT', threshold=0.5, window_
     
     if(method != 'HOG'):
         image = pipeline.named_steps['preprocess'](image, resize=resize, img_resize=image_size)
-    elif resize:
+    elif preprocess:
         image = pipeline.named_steps['preprocess'](image, resize=resize, equalize=False, img_resize=image_size)
+    else:
+        if resize:
+            image = cv2.resize(image, image_size)
+        '''TEST'''
+        equalize_image(image)
+        '''FINE TEST'''
 
     features = None
     for x, y, win in sliding_window(image, window_size=window_size, step_size=step_size):
+        print(win.shape)
         try:
             if features is None:
                 features = extract_features(win, pipeline, n_keypoints, method=method)
             else:
                 features = np.vstack((features, extract_features(win, pipeline, n_keypoints, method=method)))
-        except:
+        except Exception as e:
+            print(e)
             continue
     
-    print(features.shape)
     y_pred, score = get_image_prediction(features, pipeline, method=method,\
                                                                 threshold=threshold, verbose=verbose)
 
@@ -288,10 +299,11 @@ def detect_faces(image, pipeline : object, method='SIFT', threshold=0.5, window_
         face_keypoints = np.array([[kp[0]+x, kp[1]+y] for kp, pred in zip(keypoints, y_pred) if pred == 1])    
 
     if verbose:
-        if y_pred == 1:
-            if method == 'ORB' or method == 'HOG':
-                keypoints = cv2.KeyPoint_convert(keypoints)
-            #show_image_with_keypoints(win, keypoints, notebook=notebook)
+        for kp, pred in zip(face_keypoints, y_pred):
+            if pred == 1:
+                if method == 'ORB' or method == 'HOG':
+                    kp = cv2.KeyPoint_convert(kp)
+                #show_image_with_keypoints(win, keypoints, notebook=notebook)
         print(face_keypoints)
 
     return face_keypoints, score
