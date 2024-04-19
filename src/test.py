@@ -4,13 +4,12 @@ import cv2
 import sys
 import os
 import numpy as np
-from skimage import transform
 
-positive_images_path = pc.DATA_PATH+"/img_align_celeba"
+positive_images_path = ds.DATA_PATH+"/real_faces_128"
 
 def test_extract_dataset():
     pc.extract_dataset(positive_images_path)
-    assert "img_align_celeba" in os.listdir(pc.DATA_PATH)
+    assert "real_faces_128" in os.listdir(ds.DATA_PATH)
     print("PASS")
 
 def test_load_image():
@@ -39,6 +38,10 @@ def test_image_equalize():
     assert eq_image.shape == (218, 178)
     print("PASS")
 
+def handle_mouse(event, x, y, flags, param):
+    if event == cv2.EVENT_LBUTTONDOWN:
+        print("Left button clicked at: ({}, {})".format(x, y))
+
 
 # Main function (for debugging)
 if __name__ == "__main__":
@@ -54,7 +57,7 @@ if __name__ == "__main__":
         pc.extract_dataset()
         img_file = pc.load_image()
         cv2.namedWindow("Image", cv2.WINDOW_NORMAL)
-        cv2.setMouseCallback("Image", pc.handle_mouse)
+        cv2.setMouseCallback("Image", handle_mouse)
         image = pc.denoise_image(img_file)
         image = cv2.cvtColor(image.astype("float32"), cv2.COLOR_BGR2GRAY)
         cv2.imshow("Image", image)
@@ -73,7 +76,7 @@ if __name__ == "__main__":
         img_list = pc.load_images(number_of_images=100, random_seed=7)
         images = []
         for img in img_list:
-            image = cv2.imread(pc.DATA_PATH+"/img_align_celeba/"+img)
+            image = cv2.imread(ds.DATA_PATH+"/real_faces_128/"+img)
             images.append(pc.process_image(image, resize=True, img_resize=(64, 64)))      
         print(images[0].shape)
         print(images[1].shape)
@@ -81,30 +84,30 @@ if __name__ == "__main__":
         print("Done 2")
 
     if sys.argv[1] == "extract_ORB_features":
-        img_list = pc.load_images(pc.DATA_PATH+"/img_align_celeba/", number_of_images=10, random_seed=7)
+        img_list = pc.load_images(ds.DATA_PATH+"/real_faces_128/", number_of_images=10, random_seed=7)
         images = []
         for img in img_list:
-            images.append(cv2.imread(pc.DATA_PATH+"/img_align_celeba/"+img, cv2.IMREAD_GRAYSCALE))
+            images.append(cv2.imread(ds.DATA_PATH+"/real_faces_128/"+img, cv2.IMREAD_GRAYSCALE))
 
         des_append = []
         des_extend = []
         for img_file in img_list:
-            image = cv2.imread(pc.DATA_PATH+"/img_align_celeba/"+img_file)
+            image = cv2.imread(ds.DATA_PATH+"/real_faces_128/"+img_file)
             img = pc.process_image(image, resize=True, img_resize=(128, 128))
             _, des = pc.extract_ORB_features(img, debug=True)
         
         print("Done 3")
 
     if sys.argv[1] == "extract_SIFT_features":
-        img_list = pc.load_images(pc.DATA_PATH+"/img_align_celeba/", number_of_images=10, random_seed=7)
+        img_list = pc.load_images(ds.DATA_PATH+"/real_faces_128/", number_of_images=10, random_seed=7)
         images = []
         for img in img_list:
-            images.append(cv2.imread(pc.DATA_PATH+"/img_align_celeba/"+img, cv2.IMREAD_GRAYSCALE))
+            images.append(cv2.imread(ds.DATA_PATH+"/real_faces_128/"+img, cv2.IMREAD_GRAYSCALE))
 
         des_append = []
         des_extend = []
         for img_file in img_list:
-            image = cv2.imread(pc.DATA_PATH+"/img_align_celeba/"+img_file)
+            image = cv2.imread(ds.DATA_PATH+"/real_faces_128/"+img_file)
             img = pc.process_image(image, resize=True, img_resize=(128, 128))
             kp, des = pc.extract_SIFT_features(img, debug=True)
 
@@ -114,8 +117,8 @@ if __name__ == "__main__":
     if sys.argv[1] == "test_SIFT_pipeline":
         import joblib
         from matplotlib import image as mpimg
-        pipeline_save_path = pc.DATA_PATH+"/sift_features_32.pkl"
-        image_path = pc.DATA_PATH+"/final/Valentino_Rossi_2017.jpg"
+        pipeline_save_path = ds.DATA_PATH+"/sift_features_32.pkl"
+        image_path = ds.DATA_PATH+"/final/Valentino_Rossi_2017.jpg"
 
         pipeline = joblib.load(pipeline_save_path)
 
@@ -144,8 +147,8 @@ if __name__ == "__main__":
     if sys.argv[1] == "test_ORB_pipeline":
         import joblib
         from matplotlib import image as mpimg
-        pipeline_save_path = pc.DATA_PATH+"/svm_model_3.pkl"
-        image_path = pc.DATA_PATH+"/final/Valentino_Rossi_2017.jpg"
+        pipeline_save_path = ds.DATA_PATH+"/svm_model_3.pkl"
+        image_path = ds.DATA_PATH+"/final/Valentino_Rossi_2017.jpg"
 
         pipeline = joblib.load(pipeline_save_path)
 
