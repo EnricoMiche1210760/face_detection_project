@@ -58,6 +58,7 @@ def equalize_image(image, normalize=False):
         image = np.uint8(cv2.normalize(image, None, 0, 255, cv2.NORM_MINMAX))
     if len(image.shape) == 3:
         image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
     image = cv2.equalizeHist(image)
     return image
 
