@@ -7,6 +7,16 @@ import user_warnings as uw
 zip_file = "real_faces_128.zip"
 DATA_PATH = "../data"
 def extract_dataset(path: str = None, folder:str = "single_folder"):
+    '''
+    Extract the dataset from the zip file.
+
+    Parameters:
+        path: str
+            Path to the dataset.
+        folder: str
+            Type of folder to extract, either 'single_folder' or 'multi_folders'.
+    '''
+
     if not path:
         path = DATA_PATH
     if not os.path.exists(path):
@@ -25,6 +35,19 @@ def extract_dataset(path: str = None, folder:str = "single_folder"):
 
 
 def load_images(path:str, number_of_images=100, random_seed=42):
+    '''
+    Load a random number of images from a folder.
+    
+    Parameters:
+        path: str
+            Path to the folder containing the images.
+        number_of_images: int
+            Number of images to load.
+        random_seed: int
+            Random seed for reproducibility.
+    Returns:
+        list of images: list
+    '''
     if not os.path.exists(path):
         extract_dataset()
     list_of_images = os.listdir(path)
@@ -37,6 +60,17 @@ def load_images(path:str, number_of_images=100, random_seed=42):
     return images
 
 def load_image(path:str, filename=None):
+    '''
+    Load an image from a folder.
+
+    Parameters:
+        path: str
+            Path to the folder containing the image.
+        filename: str
+            Name of the image file.
+    Returns:
+        image file name: str
+    '''
     if filename is None:
         if not os.path.exists(path):
             extract_dataset()
@@ -50,9 +84,25 @@ def load_image(path:str, filename=None):
     return filename
 
 def get_image_list():
+    '''
+    Get image list from the final folder.
+
+    Returns:
+        list of images: list
+    '''
+
     return os.listdir(DATA_PATH+"/final/")
 
 def get_image_path(choice: int):
-   for i, img in enumerate(get_image_list()):
+    '''
+    Get the path of an image from the final folder.
+
+    Parameters:
+        choice: int
+            Index of the image in the list.
+    Returns:
+        image path: str
+    '''
+    for i, img in enumerate(get_image_list()):
        if i == choice:
            return DATA_PATH+"/final/"+img
