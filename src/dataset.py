@@ -48,3 +48,11 @@ def load_image(path:str, filename=None):
             print("File not found")
             return None
     return filename
+
+def get_image_list():
+    return os.listdir(DATA_PATH+"/final/")
+
+def get_image_path(choice: int):
+   for i, img in enumerate(get_image_list()):
+       if i == choice:
+           return DATA_PATH+"/final/"+img
