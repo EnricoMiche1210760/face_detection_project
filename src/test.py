@@ -4,6 +4,8 @@ import cv2
 import sys
 import os
 import numpy as np
+import dataset as ds
+
 
 positive_images_path = ds.DATA_PATH+"/real_faces_128"
 
