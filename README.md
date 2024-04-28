@@ -7,3 +7,10 @@ the photo technicians to optimise the settings for a selfie with one or more peo
 This is a computer vision problem, more specifically Face Detection.<br>
 You have to provide a scikit-learn pipeline that takes an input image and returns a list with the coordinates of 
 bounding boxes where faces are present, if there are no faces in the image the list will obviously be empty.<br>
+
+We selected the following datasets:
+- The [Flickr-Faces Dataset (Nvidia) 128x128](https://www.kaggle.com/datasets/dullaz/flickrfaces-dataset-nvidia-128x128) dataset, which contains 70,000 images of faces.
+- The [Caltech-101](https://data.caltech.edu/records/mzrjq-6wc02) dataset, which contains 8,275 images of 101 classes of objects.<br>
+- The [Landscape Dataset](https://www.kaggle.com/datasets/arnaud58/landscape-pictures) dataset, which contains 4,319 images of landscapes.
+
+Source code can be found in the src directory, data and the final model is in the data directory.
