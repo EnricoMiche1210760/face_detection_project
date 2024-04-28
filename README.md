@@ -13,4 +13,4 @@ We selected the following datasets:
 - The [Caltech-101](https://data.caltech.edu/records/mzrjq-6wc02) dataset, which contains 8,275 images of 101 classes of objects.<br>
 - The [Landscape Dataset](https://www.kaggle.com/datasets/arnaud58/landscape-pictures) dataset, which contains 4,319 images of landscapes.
 
-Source code can be found in the src directory, data and the final model is in the data directory.
+Source code can be found in the src directory, dataset and the final model (model.joblib) are in the data directory.
