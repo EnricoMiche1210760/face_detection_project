@@ -37,7 +37,7 @@ def denoise_image(image):
         denoised image: numpy.ndarray
     '''
     image = img_as_float(image)
-    denoised_image = cv2.GaussianBlur(image, (5, 5), 0)
+    denoised_image = cv2.GaussianBlur(image, (7, 7), 0)
     return denoised_image
 
 def process_image(image, denoise:bool=False, equalize:bool=True, resize:bool=False, img_resize:tuple=(64, 64), 

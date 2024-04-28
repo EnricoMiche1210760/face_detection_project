@@ -19,7 +19,9 @@ def sliding_window(image : np.array, window_size : tuple = (32,32), step_size : 
 
     Yields:
         Tuple containing the sliding window, its coordinates and the scale factor for the pyramid level it was extracted from (x, y, roi, scale).
+
     """
+
 
     scales = [2, 1.5, 1.25, 1, 0.75, 0.5]
    
@@ -178,8 +180,6 @@ def non_max_suppression(boxes : np.ndarray, scores, overlap_threshold=.6):
     if boxes is None:
         return (None, None)
     
-    print(boxes.shape)
-
     try:
         if(boxes.shape[1] >= 1):
             pass
@@ -197,13 +197,13 @@ def non_max_suppression(boxes : np.ndarray, scores, overlap_threshold=.6):
     y2 = boxes[:,3]
 
     area = (x2 - x1 + 1) * (y2 - y1 + 1)
-    idxs = np.argsort(scores)
+    idxs = np.argsort(scores) #scores
 
     while len(idxs) > 0:
         last = len(idxs) - 1
         i = idxs[last]
         pick.append(i)
-
+        
         xx1 = np.maximum(x1[i], x1[idxs[:last]])
         yy1 = np.maximum(y1[i], y1[idxs[:last]])
         xx2 = np.minimum(x2[i], x2[idxs[:last]])
@@ -212,9 +212,12 @@ def non_max_suppression(boxes : np.ndarray, scores, overlap_threshold=.6):
         w = np.maximum(0, xx2 - xx1 + 1)
         h = np.maximum(0, yy2 - yy1 + 1)
 
+        overlap_boxes = np.array([xx1, yy1, xx2, yy2]).T
+
         overlap = (w * h) / area[idxs[:last]]
 
         idxs = np.delete(idxs, np.concatenate(([last], np.where(overlap > overlap_threshold)[0])))
+        
 
     return (boxes[pick].astype("int"), scores[pick])
 
@@ -263,21 +266,19 @@ def detect_faces(image, pipeline : object, method='SIFT', threshold=.5, window_s
     if method != 'HOG':
         image = pipeline.named_steps['preprocess'](image, denoise=True, resize=resize, img_resize=image_size)
     else:
-        image = pipeline.named_steps['preprocess'](image, denoise=False, resize=resize, img_resize=image_size)
+        image = pipeline.named_steps['preprocess'](image, denoise=True, resize=resize, img_resize=image_size)
     features = None
 
     xs, ys, wins, scales = zip(*sliding_window(image, window_size=window_size, step_size=step_size))
 
     try:
         features = np.array([extract_features(win, pipeline, n_keypoints, method=method) for win in wins])
-        print(features.shape)
     except Exception as e:
         print(e)
     
     y_pred, scores = get_image_prediction(features, pipeline, method=method, threshold=threshold, verbose=verbose)
     boxes, face_keypoints = get_box_around_face(xs, ys, y_pred, scales, wins)
     boxes, scores = non_max_suppression(boxes, scores[y_pred==1], overlap_threshold=overlap_threshold)
-    print(scores)
 
 
     if verbose:
@@ -286,6 +287,7 @@ def detect_faces(image, pipeline : object, method='SIFT', threshold=.5, window_s
         #        if method == 'ORB' or method == 'HOG':
         #            kp = cv2.KeyPoint_convert(kp)
         #        #show_image_with_keypoints(win, keypoints, notebook=notebook)
+        print(scores)
         print(boxes)
 
     return (boxes, face_keypoints, scores)

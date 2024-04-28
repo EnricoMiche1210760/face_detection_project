@@ -118,6 +118,8 @@ def extract_patches(img_list, size:tuple=(96,96), n_patches=5000, random_seed=7)
     for img in img_list:
         image = cv2.imread(img)
         for _ in range(patch_for_image):
+            if(tmp_len >= n_patches):
+                break
             height = image.shape[0]-size[0]
             width = image.shape[1]-size[1]
             if width < 0 or height < 0:
